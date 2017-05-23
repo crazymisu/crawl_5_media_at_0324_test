@@ -1,0 +1,88 @@
++-------------------------------------+
+2017-04-17 新增localsettings配置文件说明
++-------------------------------------+
+
+爬虫启动命令：
+
+scrapy crawl ctoutiao -a crawler_type=feed_url -a test=True -a database=spider_crawld_result -a collcetion=crawl_test_media_result -a source=CZZ-KFW -a is_filter=True --loglevel INFO
+
+参数列表：
+ -a crawler_type=feed_url
+ -a test=True
+ -a database=spider_crawld_result
+ -a collcetion=crawl_test_media_result
+ -a source=CZZ-KFW
+ -a is_filter=True 
+ --loglevel INFO
+
+参数对照意义：
+
+crawler_type=feed_url （代表从Mysql读取列表页第一页，爬取列表页）
+crawler_type=crawl_detail （爬取详情页）
+
+test=true （测试跑：搭配 source 使用，用与只爬单一data_source_id源）
+test=false （非测试跑：所有data_source_id都正常跑）
+
+source=CZZ-KFW 或者 CZZ-KFW-000001 （配合test使用，可过滤到只爬单一类别所有源，也可过滤到只爬单一data_source_id，包含匹配）
+
+database=spider_crawld_result（MongoDB 库名 默认spider_crawld_result）
+collcetion=spider_crawld_result（MongoDB 表名 默认crawl_all_10_page_result）
+
+is_filter=true （进行去重；默认为进行去重）
+is_filter=false （不进行去重；默认为进行去重）
+
+--loglevel INFO （只打印 info级别日志）
+
+使用场景：
+
+1.只爬酷锋网列表页第一页；存到Mongo spider_crawld_result库 crawl_test_media_result表 ；不去重
+
+scrapy crawl ctoutiao 
+-a crawler_type=feed_url 
+-a test=True 
+-a source=CZZ-KFW 
+-a database=spider_crawld_result 
+-a collcetion=crawl_test_media_result 
+-a is_filter=False 
+--loglevel INFO
+
+2.只爬酷锋网详情页；若不翻页，需要更改localsettings文件中IS_CRAWL_NEXT_PAGE=False；默认翻页 True；存到Mongo spider_crawld_result库 crawl_test_media_result表 ；不去重
+
+scrapy crawl ctoutiao 
+-a crawler_type=crawl_detail 
+-a test=True 
+-a source=CZZ-KFW 
+-a database=spider_crawld_result 
+-a collcetion=crawl_test_media_result 
+-a is_filter=False 
+--loglevel INFO
+
+3.只爬酷锋网 data_source_id = 'CZZ-KFW-000001' 的列表页第一页；存到Mongo spider_crawld_result库 crawl_test_media_result表 ；不去重
+
+scrapy crawl ctoutiao 
+-a crawler_type=feed_url 
+-a test=True 
+-a source=CZZ-KFW-000001 
+-a database=spider_crawld_result 
+-a collcetion=crawl_test_media_result 
+-a is_filter=False 
+--loglevel INFO
+
+4.只爬酷锋网 data_source_id = 'CZZ-KFW-000001' 的详情页；若不翻页，需要更改localsettings文件中IS_CRAWL_NEXT_PAGE=False；默认翻页 True；存到Mongo spider_crawld_result库 crawl_test_media_result表 ；不去重
+
+scrapy crawl ctoutiao 
+-a crawler_type=feed_url 
+-a test=True 
+-a source=CZZ-KFW-000001 
+-a database=spider_crawld_result 
+-a collcetion=crawl_test_media_result 
+-a is_filter=False 
+--loglevel INFO
+
+localsettings文件使用说明：
+
+1.environment代表环境，可赋值 intranet=服务器环境， external=本地环境。
+2.里面的其他参数也都是服务器环境可使用的配置和本地环境可使用的配置。
+3.IS_CRAWL_NEXT_PAGE = True 是允许翻页 ； IS_CRAWL_NEXT_PAGE = False 是不允许翻页
+
+

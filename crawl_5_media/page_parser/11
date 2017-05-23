@@ -1,0 +1,11 @@
+grep -c lpush download_img_slave10_20170522T125227.log download_img_slave10_20170522T125305.log download_img_slave10_20170522T125350.log download_img_slave10_20170522T125427.log download_img_slave10_20170522T125528.log download_img_slave10_20170522T125740.log download_img_slave10_20170522T125807.log download_img_slave10_20170522T130820.log download_img_slave10_20170522T131455.log
+grep lpush download_img_slave10_20170522T131455.log | grep parse_detail_page
+
+
+{
+'img_desc': None,
+'img_path': u'/data/shareimg_oss2/test/big_media_img/2017/05/15/74a8dd32-3bae-11e7-9021-00163e2e5db7.JPEG',
+'img_width': 260,
+'img_height': 156,
+'img_src': u'http://img.weiot.net/portal/201705/15/100824p7k71htqdk7qtcs4.jpg.thumb.jpg', 'img_index': 1
+}
