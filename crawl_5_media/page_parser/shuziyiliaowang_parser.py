@@ -118,7 +118,7 @@ class ShuZiYiLiaoWangparser(Parser):
             # 点赞数
             num = response.xpath("//span[@class='total']/text()").extract()
             try:
-                sent_kafka_message['like_count'] = num[1] if num else 0
+                sent_kafka_message['like_count'] = num[1].srtip() if num else 0
             except Exception as e:
                 print e
                 print(traceback.format_exc())

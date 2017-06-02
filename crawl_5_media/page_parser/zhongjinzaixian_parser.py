@@ -98,7 +98,7 @@ class ZhongJinZaiXianParser(Parser):
                 check_flag, img_file_info = save_img_file_to_server(
                     sent_kafka_message['small_img_location'], self.mongo_client, self.redis_client, self.redis_key, publish_time if publish_time else self.now_date)
                 if not check_flag:
-                    small_img_location.append({'img_src': small_img['img_src'], 'img_path': None, 'img_index': 1, 'img_desc': None, 'img_width': None, 'img_height': None})
+                    small_img_location.append({'img_src': sent_kafka_message['small_img_location'], 'img_path': None, 'img_index': 1, 'img_desc': None, 'img_width': None, 'img_height': None})
                 else:
                     small_img['img_path'] = img_file_info['img_file_name']
                     small_img['img_index'] = 1
@@ -106,8 +106,8 @@ class ZhongJinZaiXianParser(Parser):
                     small_img['img_width'] = img_file_info['img_width']
                     small_img['img_height'] = img_file_info['img_height']
                     small_img_location.append(small_img)
-                sent_kafka_message['small_img_location'] = small_img_location[0]
-                sent_kafka_message['small_img_location_count'] = len(small_img_location[0])
+                sent_kafka_message['small_img_location'] = small_img_location
+                sent_kafka_message['small_img_location_count'] = len(small_img_location)
             else:
                 sent_kafka_message['small_img_location'] = None
                 sent_kafka_message['small_img_location_count']=None
@@ -115,17 +115,23 @@ class ZhongJinZaiXianParser(Parser):
             title = response.xpath("//h1[@id='Title']/text() | //h2[@id='Title']/text() | //h3[@class='artTitle']/text()").extract()
             sent_kafka_message['title'] = title[0] if title else None
             # 文章授权说明
-            authorized=response.xpath("//em/text() | //div[@class='Stmt']/text()").extract()
-            sent_kafka_message['authorized'] = authorized[0].split("：")[1] if authorized else None
+            try:
+                authorized=response.xpath("//em/text() | //div[@class='Stmt']/text()").extract()
+                sent_kafka_message['authorized'] = authorized[0].split("：")[1] if authorized else None
+            except Exception as e:
+                sent_kafka_message['authorized'] = None
             # 网页源代码 不需要base64加密
             sent_kafka_message['body'] = response.body_as_unicode()
             # 作者
-            author = response.xpath("//span[@id='author_baidu']/text() | //P[@class='Fl']//span/text() | //div[@class='GSTitsL Cf']/span/text() | //div[@class='artDes']//span/text()").extract()
+            author = response.xpath("//span[@id='author_baidu']/text() | //P[@class='Fl']//span/text() | //div[@class='GSTitsL Cf']/span/text() | //div[@class='artDes']//span/text() | //div[@class='article-information']//span/text()").extract()
             print(author)
-            if u"auto.cnfol" in response.url:
-                sent_kafka_message['author'] = author[3].strip().split("：")[1] if author else None
-            else:
-                sent_kafka_message['author'] = author[-1].strip().split("：")[1] if author else None
+            try:
+                if u"auto.cnfol" in response.url:
+                    sent_kafka_message['author'] = author[3].strip().split("：")[1] if author else None
+                else:
+                    sent_kafka_message['author'] = author[-1].strip().split("：")[1] if author else None
+            except Exception as e :
+                sent_kafka_message['author'] = None
             # 文章的信息来源
             info_source = response.xpath("//P[@class='Fl']//span[@class='Mr10']/text() | //span[@class='Mr10']/text() | //div[@class='artDes']//span[@class='Mr10']/text() | //span[@id='source_baidu']/span/text() | //div[@class='GSTitsL Cf']/span/a/text()").extract()
             sent_kafka_message['info_source'] = info_source[0] if info_source else None
@@ -166,7 +172,10 @@ class ZhongJinZaiXianParser(Parser):
                 sent_kafka_message['parsed_content_char_count'] = len(sent_kafka_message['parsed_content_main_body'])
                 # 文章关键词标签
                 tags=response.xpath("//div[@id='tags']//a/text()").extract()
-                sent_kafka_message['tags'] = tags[-3:] if tags else None
+                try:
+                    sent_kafka_message['tags'] = tags[-3:] if tags else None
+                except Exception as e:
+                    sent_kafka_message['tags'] = None
                 # 点赞数
                 sent_kafka_message['like_count'] = None
                 # 回复数

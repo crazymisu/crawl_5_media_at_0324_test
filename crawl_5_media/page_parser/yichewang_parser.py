@@ -31,36 +31,38 @@ class YiCheWangParser(Parser):
         original_sent_kafka_message = response.meta['queue_value']
         #翻页
         url_page = None
-        if u"?page" in response.url:
-            for i in range(1, 11):
-                url_page = response.url.split("=1")[0] + '='+str(i)
-                if IS_CRAWL_NEXT_PAGE and url_page:
-                    sent_kafka_message = copy.deepcopy(original_sent_kafka_message)
-                    print(url_page)
-                    sent_kafka_message['url'] = url_page
-                    sent_kafka_message['parse_function'] = 'parse_list_page'
-                    yield sent_kafka_message
-        elif u"&pageIndex=1&pageSize=" in response.url:
-            for i in range(1, 11):
-                next_url = response.url.split("=")
-                if len(next_url) == 4:
-                    url_page = next_url[0] + '=' + next_url[1] + \
-                        '=' + next_url[2] + '=' + str(i)
+        if ('?pageindex=1' or '&pageIndex=1&pageSize=10' or 'getTagNewsData&pageIndex=1') in response.url:
+            if u"?page" in response.url:
+                for i in range(1, 10):
+                    url_page = response.url.split("=1")[0] + '='+str(i)
                     if IS_CRAWL_NEXT_PAGE and url_page:
                         sent_kafka_message = copy.deepcopy(original_sent_kafka_message)
                         print(url_page)
                         sent_kafka_message['url'] = url_page
                         sent_kafka_message['parse_function'] = 'parse_list_page'
                         yield sent_kafka_message
-        elif u"getTagNewsData&pageIndex" in response.url:
-            for i in range(1, 11):
-                url_page = response.url.split("getTagNewsData&pageIndex=")[0] + 'getTagNewsData&pageIndex='+str(i)
-                if IS_CRAWL_NEXT_PAGE and url_page:
-                    sent_kafka_message = copy.deepcopy(original_sent_kafka_message)
-                    print(url_page)
-                    sent_kafka_message['url'] = url_page
-                    sent_kafka_message['parse_function'] = 'parse_list_page'
-                    yield sent_kafka_message
+
+            elif u"&pageIndex=1&pageSize=" in response.url:
+                for i in range(1, 10):
+                    next_url = response.url.split("=")
+                    if len(next_url) == 4:
+                        url_page = next_url[0] + '=' + next_url[1] + \
+                            '=' + next_url[2] + '=' + str(i)
+                        if IS_CRAWL_NEXT_PAGE and url_page:
+                            sent_kafka_message = copy.deepcopy(original_sent_kafka_message)
+                            print(url_page)
+                            sent_kafka_message['url'] = url_page
+                            sent_kafka_message['parse_function'] = 'parse_list_page'
+                            yield sent_kafka_message
+            elif u"getTagNewsData&pageIndex" in response.url:
+                for i in range(1, 10):
+                    url_page = response.url.split("getTagNewsData&pageIndex=")[0] + 'getTagNewsData&pageIndex='+str(i)
+                    if IS_CRAWL_NEXT_PAGE and url_page:
+                        sent_kafka_message = copy.deepcopy(original_sent_kafka_message)
+                        print(url_page)
+                        sent_kafka_message['url'] = url_page
+                        sent_kafka_message['parse_function'] = 'parse_list_page'
+                        yield sent_kafka_message
 
         if u"?pageindex" in response.url:
             url_list = response.xpath("//div[@class='cartest-card'] | //div[@class='article-card horizon'] | //body/li").extract()
@@ -86,8 +88,8 @@ class YiCheWangParser(Parser):
                         small_img['img_src'], self.mongo_client, self.redis_client, self.redis_key, publish_time if publish_time else self.now_date)
                     if not check_flag:
                         small_img_location.append({'img_src': small_img['img_src'], 'img_path': None, 'img_index': 1, 'img_desc': None, 'img_width': None, 'img_height': None})
-                        item['small_img_location']=small_img_location[0]
-                        item['small_img_location_count'] = len(small_img_location[0])
+                        item['small_img_location']=small_img_location
+                        item['small_img_location_count'] = len(small_img_location)
                     else:
                         small_img['img_path'] = img_file_info['img_file_name']
                         small_img['img_index'] = 1
@@ -95,8 +97,8 @@ class YiCheWangParser(Parser):
                         small_img['img_width'] = img_file_info['img_width']
                         small_img['img_height'] = img_file_info['img_height']
                         small_img_location.append(small_img)
-                        item['small_img_location'] = small_img_location[0]
-                        item['small_img_location_count'] = len(small_img_location[0])
+                        item['small_img_location'] = small_img_location
+                        item['small_img_location_count'] = len(small_img_location)
                 else:
                     item['small_img_location']=None
                     item['small_img_location_count'] = 0
@@ -116,7 +118,6 @@ class YiCheWangParser(Parser):
             if u"getTagNewsData" in response.url:
                 item = copy.deepcopy(original_sent_kafka_message)
                 n=-1
-                small_img_location = []
                 try:
                     content_str=response.body_as_unicode()
                     print(content_str)
@@ -150,8 +151,8 @@ class YiCheWangParser(Parser):
                             small_img['img_src'], self.mongo_client, self.redis_client, self.redis_key, publish_time if publish_time else self.now_date)
                         if not check_flag:
                             small_img_location.append({'img_src': small_img['img_src'], 'img_path': None, 'img_index': 1, 'img_desc': None, 'img_width': None, 'img_height': None})
-                            item['small_img_location']=small_img_location[0]
-                            item['small_img_location_count'] = len(small_img_location[0])
+                            item['small_img_location']=small_img_location
+                            item['small_img_location_count'] = len(small_img_location)
                         else:
                             small_img['img_path'] = img_file_info['img_file_name']
                             small_img['img_index'] = 1
@@ -159,19 +160,21 @@ class YiCheWangParser(Parser):
                             small_img['img_width'] = img_file_info['img_width']
                             small_img['img_height'] = img_file_info['img_height']
                             small_img_location.append(small_img)
-                            item['small_img_location'] = small_img_location[0]
-                            item['small_img_location_count'] = len(small_img_location[0])
+                            item['small_img_location'] = small_img_location
+                            item['small_img_location_count'] = len(small_img_location)
                     else:
                         item['small_img_location']=None
                         item['small_img_location_count'] = 0
 
                     each_url = i.get('url',None)
                     each_url = each_url.split('.html')[0] + u"_all.html#p1" if each_url else None
+                    item['url'] = each_url
+                    item['parse_function'] = 'parse_detail_page'
                     # print(each_url)
                     # print(item['small_img_location'])
                     yield item
             elif u"getPieceNewsList" in response.url:
-                item = SentKafkaMessage()
+                item = copy.deepcopy(original_sent_kafka_message)
                 n=-1
                 small_img_location = []
                 try:
@@ -205,8 +208,8 @@ class YiCheWangParser(Parser):
                             small_img['img_src'], self.mongo_client, self.redis_client, self.redis_key, publish_time if publish_time else self.now_date)
                         if not check_flag:
                             small_img_location.append({'img_src': small_img['img_src'], 'img_path': None, 'img_index': 1, 'img_desc': None, 'img_width': None, 'img_height': None})
-                            item['small_img_location']=small_img_location[0]
-                            item['small_img_location_count'] = len(small_img_location[0])
+                            item['small_img_location']=small_img_location
+                            item['small_img_location_count'] = len(small_img_location)
                         else:
                             small_img['img_path'] = img_file_info['img_file_name']
                             small_img['img_index'] = 1
@@ -214,13 +217,15 @@ class YiCheWangParser(Parser):
                             small_img['img_width'] = img_file_info['img_width']
                             small_img['img_height'] = img_file_info['img_height']
                             small_img_location.append(small_img)
-                            item['small_img_location'] = small_img_location[0]
-                            item['small_img_location_count'] = len(small_img_location[0])
+                            item['small_img_location'] = small_img_location
+                            item['small_img_location_count'] = len(small_img_location)
                     else:
                         item['small_img_location']=None
                         item['small_img_location_count'] = 0
                     each_url =u"http://www.autoreport.cn" + i.get('Url',None)
                     each_url = each_url.split('.html')[0] + u"_all.html#p1" if each_url else None
+                    item['url'] = each_url
+                    item['parse_function'] = 'parse_detail_page'
                     # print(each_url)
                     # print(item['small_img_location'])
                     yield item
@@ -246,14 +251,17 @@ class YiCheWangParser(Parser):
             # title
             title = response.xpath("//article//h1[@class='tit-h1']/text() | //h3/a/text() | //div[@class='title_box']/h1/text()").extract()
             sent_kafka_message['title'] = title[0].strip() if title else None
-            print(sent_kafka_message['title'])
+            # print(sent_kafka_message['title'])
             # 文章授权说明
-            if u"guandian" in response.url:
-                authorized=response.xpath("//div[@class='shengming_box']/text()").extract()
-                sent_kafka_message['authorized'] = authorized[0].split("：")[1] if authorized else None
-            else:
-                sent_kafka_message['authorized']=None
-            print(sent_kafka_message['authorized'])
+            try:
+                if u"guandian" in response.url:
+                    authorized=response.xpath("//div[@class='shengming_box']/text()").extract()
+                    sent_kafka_message['authorized'] = authorized[0].split("：")[1] if authorized else None
+                else:
+                    sent_kafka_message['authorized']=None
+            except Exception as e:
+                sent_kafka_message['authorized'] = None
+            # print(sent_kafka_message['authorized'])
             # 网页源代码 不需要base64加密
             sent_kafka_message['body'] = response.body_as_unicode()
             # print(type(sent_kafka_message['body']))
@@ -267,7 +275,7 @@ class YiCheWangParser(Parser):
             sent_kafka_message[
                 'publish_time'] = self.parse_toutiao_publish_time(publish_time)
             # sent_kafka_message['publish_time'] = publish_time
-            print(sent_kafka_message['publish_time'])
+            # print(sent_kafka_message['publish_time'])
             # 作者
             author = response.xpath(
                 "//div[@class='article-information']//span/text() | //div[@class='title_box']/p/span/a/text()").extract()
@@ -276,7 +284,7 @@ class YiCheWangParser(Parser):
                 sent_kafka_message['author'] = author[0] if author else None
             else:
                 sent_kafka_message['author'] = author[0].split("：")[1] if not len(author)==1 else None
-            print(sent_kafka_message['author'])
+            # print(sent_kafka_message['author'])
             # 文章的信息来源
             info_source = response.xpath("//div[@class='article-information']//span/a/text()").extract()
             if u"guandian" in response.url:
@@ -286,7 +294,7 @@ class YiCheWangParser(Parser):
             print(sent_kafka_message['info_source'])
             # 文章大图相关信息
             img_list = response.xpath("//div[@class='article-content']//p/a/img/@src | //div[@class='article-content']//p/img/@src | //div[@class='text_box']/p/img/@src").extract()
-            print(img_list)
+            # print(img_list)
             img_location = []
             if img_list:
                 for each in img_list:
@@ -309,8 +317,8 @@ class YiCheWangParser(Parser):
                         # 文章大图个数
                         sent_kafka_message['img_location'] = img_location
 
-                print(sent_kafka_message['img_location'])
-                print(sent_kafka_message['img_location_count'])
+                # print(sent_kafka_message['img_location'])
+                # print(sent_kafka_message['img_location_count'])
             else:
                 pass
             # 按照规定格式解析出的文章正文 <p>一段落</p>
@@ -349,19 +357,19 @@ class YiCheWangParser(Parser):
             num = response.xpath(
                 "//div[@class='tp-box zz-sty zan']//p/text() | //div[@class='zan_box']//em/text()").extract()
             if u"guandian" in response.url:
-                sent_kafka_message['like_count'] = num[0][0] if num else 0
+                sent_kafka_message['like_count'] = num[0][0].strip() if num else 0
             else:
-                sent_kafka_message['like_count'] = num[0][-1] if num else 0
-            print(sent_kafka_message['like_count'])
+                sent_kafka_message['like_count'] = num[0][-1].strip() if num else 0
+            # print(sent_kafka_message['like_count'])
             # 回复数
             sent_kafka_message['comment_count'] = None
-            print(sent_kafka_message['comment_count'])
+            # print(sent_kafka_message['comment_count'])
             # 按照规定格式解析出的文章正文 <p>一段落</p>
             try:
                 sent_kafka_message['parsed_content'] = self.get_parsed_content(
                     response, publish_time)
                 # response.xpath("//div[@class='clearfix contdiv']//p").extract()[:-1]
-                print(sent_kafka_message['parsed_content'])
+                # print(sent_kafka_message['parsed_content'])
             except Exception as e:
                 print e
 
@@ -432,6 +440,6 @@ class YiCheWangParser(Parser):
             '')
         content_text = content_text.split(' ')
         content_text = ''.join(content_text)
-        print(content_text)
+        # print(content_text)
         # print("1212"*30)
         return content_text

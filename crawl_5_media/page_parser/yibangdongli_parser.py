@@ -47,6 +47,7 @@ class YiBangDongLiParser(Parser):
             small_img_location = []
 
             for each in url_list:
+                small_img_location = []
                 item = copy.deepcopy(original_sent_kafka_message)
                 # 缩略图
                 n += 1
@@ -89,8 +90,8 @@ class YiBangDongLiParser(Parser):
                         small_img['img_width'] = img_file_info['img_width']
                         small_img['img_height'] = img_file_info['img_height']
                         small_img_location.append(small_img)
-                    item['small_img_location'] = small_img_location[n]
-                    item['small_img_location_count'] = len(small_img_location[n])
+                    item['small_img_location'] = small_img_location
+                    item['small_img_location_count'] = len(small_img_location)
                 item['url'] = each
                 item['parse_function'] = 'parse_detail_page'
                 yield item

@@ -30,8 +30,21 @@ class ZhanZhangZhiJiaParser(Parser):
 
     def parse_list_page(self, response):
         original_sent_kafka_message = response.meta['queue_value']
-        next_page_url_document = response.xpath("//div[@class='pageBar fr']/li/a/@href | //ul[@id='paginator']/li/a/@href | //div[@class='overhid auto']/li/a/@href | //div[@class='overhid   auto']/li/a/@href").extract()
-        url_page = next_page_url_document[-1] if next_page_url_document else None
+        try:
+            next_page_url_document = response.xpath(
+                "//div[@class='pageBar fr']/li/a/@href | //ul[@id='paginator']/li/a/@href | //div[@class='overhid auto']/li/a/@href | //div[@class='overhid   auto']/li/a/@href | //div[@class='pageBar fr']//li/a/@href | //div[@class='pageBar fr ']//li/a/@href").extract()
+            if next_page_url_document:
+                if 'chinaz' not in next_page_url_document[-1]:
+                    url_page = next_page_url_document[-1] if next_page_url_document else None
+                    if url_page:
+                        url_page = response.urljoin(url_page)
+                    else:
+                        url_page = None
+            else:
+                url_page = None
+        except Exception as e:
+            url_page = None
+        # print(url_page)
         if IS_CRAWL_NEXT_PAGE and url_page:
             sent_kafka_message = copy.deepcopy(original_sent_kafka_message)
             sent_kafka_message['url'] = url_page
@@ -62,7 +75,7 @@ class ZhanZhangZhiJiaParser(Parser):
     def parse_detail_page(self, response):
         title = response.xpath("//h1/text()").extract()
         page_num=response.xpath("//div[@class='pagebreak pageBar tc mtb20']/a/@href | //a[@id='fulltext']/text()").extract()
-        if title or (not page_num):
+        if (title or (not page_num)) and (not u"/game/lol" in response.url):
             sent_kafka_message = response.meta['queue_value']
             # crawl url domain
             sent_kafka_message['url_domain'] = response.url.split('/')[2]
@@ -74,11 +87,14 @@ class ZhanZhangZhiJiaParser(Parser):
             sent_kafka_message['status_code'] = response.status
             print(sent_kafka_message['status_code'])
             # 发布时间
-            publish_time = response.xpath("//p[@class='info pr30']/span[1]/text() | //div[@class='Postcon-head-mes']/span[1]/text()").extract()
-            if "game" in response.url:
-                publish_time = publish_time[0].strip().split("：")[1] if publish_time else None
-            else:
-                publish_time = publish_time[0].strip() if publish_time else None
+            try:
+                publish_time = response.xpath("//p[@class='info pr30']/span[1]/text() | //div[@class='Postcon-head-mes']/span[1]/text()").extract()
+                if "game" in response.url:
+                    publish_time = publish_time[0].strip().split("：")[1] if publish_time else None
+                else:
+                    publish_time = publish_time[0].strip() if publish_time else None
+            except Exception as e:
+                publish_time = None
             sent_kafka_message['publish_time'] = self.parse_toutiao_publish_time(publish_time)
             # sent_kafka_message['publish_time'] = publish_time
             print(sent_kafka_message['publish_time'])
@@ -88,7 +104,7 @@ class ZhanZhangZhiJiaParser(Parser):
                 check_flag, img_file_info = save_img_file_to_server(
                     sent_kafka_message['small_img_location'], self.mongo_client, self.redis_client, self.redis_key, publish_time if publish_time else self.now_date)
                 if not check_flag:
-                    small_img_location.append({'img_src': small_img['img_src'], 'img_path': None, 'img_index': 1, 'img_desc': None, 'img_width': None, 'img_height': None})
+                    small_img_location.append({'img_src': sent_kafka_message['small_img_location'], 'img_path': None, 'img_index': 1, 'img_desc': None, 'img_width': None, 'img_height': None})
                 else:
                     small_img['img_path'] = img_file_info['img_file_name']
                     small_img['img_index'] = 1
@@ -96,11 +112,11 @@ class ZhanZhangZhiJiaParser(Parser):
                     small_img['img_width'] = img_file_info['img_width']
                     small_img['img_height'] = img_file_info['img_height']
                     small_img_location.append(small_img)
-                sent_kafka_message['small_img_location'] = small_img_location[0]
-                sent_kafka_message['small_img_location_count'] = len(small_img_location[0])
+                sent_kafka_message['small_img_location'] = small_img_location
+                sent_kafka_message['small_img_location_count'] = len(small_img_location)
             else:
                 sent_kafka_message['small_img_location'] = None
-                sent_kafka_message['small_img_location_count']== None
+                sent_kafka_message['small_img_location_count'] = None
 
             print(sent_kafka_message['small_img_location'])
             # title
@@ -139,12 +155,14 @@ class ZhanZhangZhiJiaParser(Parser):
                 sent_kafka_message['info_source'] = None
             print(sent_kafka_message['info_source'])
             # 文章大图相关信息
-            img_list = response.xpath("//p[@style='text-align:center']//img/@src | //p[@style='text-align:center;']//img/@src | //div[@id='ctrlfscont']//p/a/img/@src | //p[@style='text-align: center; text-indent: 0;']//img/@src").extract()
+            img_list = response.xpath("//p[@style='text-align:center']//img/@src | //p[@style='text-align:center;']//img/@src | //div[@id='ctrlfscont']//p/a/img/@src | //p[@style='text-align: center; text-indent: 0;']//img/@src | //div[@id='ctrlfscont']//center//img/@src").extract()
             print(img_list)
             img_location = []
             if img_list:
                 for each in img_list:
                     img = {'img_path': None, 'img_desc': None, 'img_width': None, 'img_height': None}
+                    if 'http:' not in each:
+                        each='http:'+each
                     img['img_src'] = each
                     check_flag, img_file_info = save_img_file_to_server(
                         img['img_src'], self.mongo_client, self.redis_client, self.redis_key, publish_time if publish_time else self.now_date)
@@ -183,36 +201,39 @@ class ZhanZhangZhiJiaParser(Parser):
             content = response.xpath("//div[@id='ctrlfscont']//text()").extract()
             content = content if content else None
             print(content)
-            sent_kafka_message['parsed_content_main_body'] = ''.join(
-                [i for i in content])
-            print(sent_kafka_message['parsed_content_main_body'])
-            # 按照规定格式解析出的文章纯文本个数
-            # sent_kafka_message['parsed_content_char_count'] = len(response.xpath(
-            #     "//div[@class='clearfix contdiv']//p[@class='newtext']/text()").extract()[:-1])
-            sent_kafka_message['parsed_content_char_count'] = len(sent_kafka_message['parsed_content_main_body'])
-            # print(sent_kafka_message['parsed_content_char_count'])
-            # 文章关键词标签
-            tags=response.xpath("//ul[@class='post-taglist clearfix mb20']/li/a/text() | //span[@class='keywords']/a/text()").extract()
-            sent_kafka_message['tags'] = tags if tags else None
-            print(sent_kafka_message['tags'])
-            # 点赞数
-            sent_kafka_message['like_count'] = 0
-            # print("****" * 30)
-            print(sent_kafka_message['like_count'])
-            # 回复数
-            sent_kafka_message['comment_count'] = None
-            # print("3333" * 30)
-            print(sent_kafka_message['comment_count'])
-            # 按照规定格式解析出的文章正文 <p>一段落</p>
-            try:
-                sent_kafka_message[
-                    'parsed_content'] = self.get_parsed_content(response, publish_time)
-                # response.xpath("//div[@class='clearfix contdiv']//p").extract()[:-1]
-                print(sent_kafka_message['parsed_content'])
-            except Exception as e:
-                print e
+            if content:
+                sent_kafka_message['parsed_content_main_body'] = ''.join(
+                    [i for i in content])
+                print(sent_kafka_message['parsed_content_main_body'])
+                # 按照规定格式解析出的文章纯文本个数
+                # sent_kafka_message['parsed_content_char_count'] = len(response.xpath(
+                #     "//div[@class='clearfix contdiv']//p[@class='newtext']/text()").extract()[:-1])
+                sent_kafka_message['parsed_content_char_count'] = len(sent_kafka_message['parsed_content_main_body'])
+                # print(sent_kafka_message['parsed_content_char_count'])
+                # 文章关键词标签
+                tags=response.xpath("//ul[@class='post-taglist clearfix mb20']/li/a/text() | //span[@class='keywords']/a/text()").extract()
+                sent_kafka_message['tags'] = tags if tags else None
+                print(sent_kafka_message['tags'])
+                # 点赞数
+                sent_kafka_message['like_count'] = 0
+                # print("****" * 30)
+                print(sent_kafka_message['like_count'])
+                # 回复数
+                sent_kafka_message['comment_count'] = None
+                # print("3333" * 30)
+                print(sent_kafka_message['comment_count'])
+                # 按照规定格式解析出的文章正文 <p>一段落</p>
+                try:
+                    sent_kafka_message[
+                        'parsed_content'] = self.get_parsed_content(response, publish_time)
+                    # response.xpath("//div[@class='clearfix contdiv']//p").extract()[:-1]
+                    print(sent_kafka_message['parsed_content'])
+                except Exception as e:
+                    print e
 
-            yield sent_kafka_message
+                yield sent_kafka_message
+            else:
+                pass
         else:
             pass
 
@@ -230,13 +251,17 @@ class ZhanZhangZhiJiaParser(Parser):
         parsed_content = ''
         if htmlstr:
             soup = BeautifulSoup(htmlstr,'lxml')
-            # parsed_content_main_body = soup.body.div.text
-            p_content_document_list = soup.body.div.children
+            if "article" in soup:
+                p_content_document_list = soup.body.article.children
+            else:
+                p_content_document_list = soup.body.div.children
             for p in p_content_document_list:
                 if isinstance(p, bs4.Tag):
                     if p.findChild('img'):
                         try:
-                            img_src = img_src = p.img['src']
+                            img_src = p.img['src']
+                            if 'http:' not in img_src:
+                                img_src='http:'+img_src
                         except Exception as e:
                             print e
                         try:

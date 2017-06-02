@@ -77,7 +77,7 @@ class ShenMeZhiDeMaiParser(Parser):
                 check_flag, img_file_info = save_img_file_to_server(
                     sent_kafka_message['small_img_location'], self.mongo_client, self.redis_client, self.redis_key, publish_time if publish_time else self.now_date)
                 if not check_flag:
-                    small_img_location.append({'img_src': small_img['img_src'], 'img_path': None, 'img_index': 1, 'img_desc': None, 'img_width': None, 'img_height': None})
+                    small_img_location.append({'img_src': sent_kafka_message['small_img_location'], 'img_path': None, 'img_index': 1, 'img_desc': None, 'img_width': None, 'img_height': None})
                 else:
                     small_img['img_path'] = img_file_info['img_file_name']
                     small_img['img_index'] = 1
@@ -85,8 +85,8 @@ class ShenMeZhiDeMaiParser(Parser):
                     small_img['img_width'] = img_file_info['img_width']
                     small_img['img_height'] = img_file_info['img_height']
                     small_img_location.append(small_img)
-                sent_kafka_message['small_img_location'] = small_img_location[0]
-                sent_kafka_message['small_img_location_count'] = len(small_img_location[0])
+                sent_kafka_message['small_img_location'] = small_img_location
+                sent_kafka_message['small_img_location_count'] = len(small_img_location)
             else:
                 sent_kafka_message['small_img_location'] = None
                 sent_kafka_message['small_img_location_count']
@@ -174,7 +174,7 @@ class ShenMeZhiDeMaiParser(Parser):
             # 点赞数
             num = response.xpath("//span[@class='grey']/em/text()").extract()
             try:
-                sent_kafka_message['like_count'] = num[0] if num else None
+                sent_kafka_message['like_count'] = num[0].strip() if num else None
                 # print("****" * 30)
                 print(sent_kafka_message['like_count'])
             except Exception as e:

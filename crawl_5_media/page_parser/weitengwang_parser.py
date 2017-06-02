@@ -33,7 +33,9 @@ class WeiTengWangParser(Parser):
         original_sent_kafka_message = response.meta['queue_value']
         if u"wq_wechatcollecting-wq_wechatcollecting" in response.url:
             next_page_url_document = response.xpath("//div[@class='pg']/a/@href").extract()
-            url_page = next_page_url_document[-1] if next_page_url_document else None
+            if 'articlelist-0-1-' in response.url:
+                url_page = next_page_url_document[-1] if next_page_url_document else None
+                url_page='http://www.weiot.net/'+ url_page
             if IS_CRAWL_NEXT_PAGE and url_page:
                 sent_kafka_message = copy.deepcopy(original_sent_kafka_message)
                 sent_kafka_message['url'] = url_page
@@ -68,8 +70,8 @@ class WeiTengWangParser(Parser):
                     small_img['img_src'], self.mongo_client, self.redis_client, self.redis_key, publish_time if publish_time else self.now_date)
                 if not check_flag:
                     small_img_location.append({'img_src': small_img['img_src'], 'img_path': None, 'img_index': 1, 'img_desc': None, 'img_width': None, 'img_height': None})
-                    item['small_img_location']=small_img_location[0]
-                    item['small_img_location_count'] = len(small_img_location[0])
+                    item['small_img_location']=small_img_location
+                    item['small_img_location_count'] = len(small_img_location)
                 else:
                     small_img['img_path'] = img_file_info['img_file_name']
                     small_img['img_index'] = 1
@@ -77,8 +79,8 @@ class WeiTengWangParser(Parser):
                     small_img['img_width'] = img_file_info['img_width']
                     small_img['img_height'] = img_file_info['img_height']
                     small_img_location.append(small_img)
-                    item['small_img_location'] = small_img_location[0]
-                    item['small_img_location_count'] = len(small_img_location[0])
+                    item['small_img_location'] = small_img_location
+                    item['small_img_location_count'] = len(small_img_location)
             else:
                 item['small_img_location']=None
                 item['small_img_location_count'] = 0
@@ -102,7 +104,7 @@ class WeiTengWangParser(Parser):
     def parse_detail_page(self, response):
         sent_kafka_message = response.meta['queue_value']
         sent_kafka_message['small_img_location']=sent_kafka_message['small_img_location']
-        print(sent_kafka_message['small_img_location'])
+        # print(sent_kafka_message['small_img_location'])
         title = response.xpath("//div[@class='h hm']/h1/text() | //div[@class='wqpc_wechat_view']/h3/text()").extract()
         publish_time=sent_kafka_message['publish_time']
         if title:

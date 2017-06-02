@@ -60,8 +60,8 @@ class GPLPParser(Parser):
                     small_img['img_src'], self.mongo_client, self.redis_client, self.redis_key, publish_time if publish_time else self.now_date)
                 if not check_flag:
                     small_img_location.append({'img_src': small_img['img_src'], 'img_path': None, 'img_index': 1, 'img_desc': None, 'img_width': None, 'img_height': None})
-                    item['small_img_location']=small_img_location[0]
-                    item['small_img_location_count'] = len(small_img_location[0])
+                    item['small_img_location']=small_img_location
+                    item['small_img_location_count'] = len(small_img_location)
                 else:
                     small_img['img_path'] = img_file_info['img_file_name']
                     small_img['img_index'] = 1
@@ -69,8 +69,8 @@ class GPLPParser(Parser):
                     small_img['img_width'] = img_file_info['img_width']
                     small_img['img_height'] = img_file_info['img_height']
                     small_img_location.append(small_img)
-                    item['small_img_location'] = small_img_location[0]
-                    item['small_img_location_count'] = len(small_img_location[0])
+                    item['small_img_location'] = small_img_location
+                    item['small_img_location_count'] = len(small_img_location)
             else:
                 item['small_img_location']=None
                 item['small_img_location_count'] = 0
@@ -88,12 +88,10 @@ class GPLPParser(Parser):
         title = response.xpath("//div[@class='left']//h1/text() | //h1[@class='entry-title']/text()").extract()
         if title:
             sent_kafka_message = response.meta['queue_value']
-            small_img_list = []
             try:
-                small_img_location = response.meta['queue_value']['small_img_location']
-                small_img_list.append(small_img_location)
+                small_img_location = sent_kafka_message['small_img_location']
                 sent_kafka_message[
-                    'small_img_location'] = small_img_list
+                    'small_img_location'] = small_img_location
             except Exception as e:
                 print e
                 print(traceback.format_exc())
@@ -112,15 +110,19 @@ class GPLPParser(Parser):
             # 网页源代码 不需要base64加密
             sent_kafka_message['body'] = response.body_as_unicode()
             # 发布时间
-            publish_time = response.xpath("//div[@class='single-cat']/text()").extract()
-            publish_time = publish_time[0].strip() if publish_time else None
-            publish_time=publish_time.split("：")[1].split(" ")[0]
-            sent_kafka_message['publish_time'] = self.parse_toutiao_publish_time(publish_time)
+            try:
+                publish_time = response.xpath("//div[@class='single-cat']/text()").extract()
+                publish_time = publish_time[0].strip() if publish_time else None
+                publish_time=publish_time.split("：")[1].split(" ")[0]
+                sent_kafka_message['publish_time'] = self.parse_toutiao_publish_time(publish_time)
+            except Exception as e:
+                print e
+                print(traceback.format_exc())
             # 作者
             sent_kafka_message['author'] = None
             # 文章的信息来源
             sent_kafka_message['info_source'] = None
-                        # 文章大图相关信息
+            # 文章大图相关信息
             img_list = response.xpath("//div[@class='entry-content']//h1/a/img/@src").extract()
             img_location = []
             if img_list:
@@ -167,15 +169,18 @@ class GPLPParser(Parser):
                     else:
                         sent_kafka_message['tags'] = tags[1].split(" ") if tags[1] else None
                 except Exception as e:
+                    print e
+                    print(traceback.format_exc())
                     sent_kafka_message['tags']= None
                 # 点赞数
                 num = response.xpath(
                     "//i[@class='count']/text()").extract()
                 try:
-                    sent_kafka_message['like_count'] = num[0] if num else 0
+                    sent_kafka_message['like_count'] = num[0].strip() if num else 0
                 except Exception as e:
                     print e
                     print(traceback.format_exc())
+                    sent_kafka_message['like_count'] = None
                 # 回复数
                 sent_kafka_message['comment_count'] = None
                 # 按照规定格式解析出的文章正文 <p>一段落</p>

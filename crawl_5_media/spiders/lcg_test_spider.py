@@ -7,7 +7,7 @@ import pickle
 import MySQLdb
 
 from crawl_5_media.items import SentKafkaMessage
-from crawl_5_media.page_parser.shenmezhidemai_parser import ShenMeZhiDeMaiParser  # debug
+from crawl_5_media.page_parser.GPLP_parser import GPLPParser  # debug
 from crawl_5_media.localsettings import MYSQL_DBKWARGS, environment
 from crawl_5_media.utils.redis_client import get_redis_client, check_hash_md5_url_at_redis
 
@@ -21,12 +21,12 @@ class LcgTestSpider(CrawlSpider):
 
     def __init__(self, flag="list"):
         key_prefix = 'queue:crawl_source:'  # 需要特殊化队列名称，比如 'queue:crawl_source:wst:', 加上自己名字的开头拼音 debug
-        self.key = key_prefix + 'shuyong_shenmezhide' + environment
+        self.key = key_prefix + 'shuyong_GPLP' + environment
         self.fail_url_redis_key = key_prefix + '5_media_fail_url_info_' + environment
         self.redis_client = get_redis_client()
         self.db_3_redis_client = get_redis_client(None, 3)
         self.database = 'dmt'
-        self.collcetion = 'shuyong_shenmezhidemai_media_result'  # 特殊化为自己的表名，比如'wst_huxiu_media_result' ,开头前缀为自己的名字开头字母，debug
+        self.collcetion = 'shuyong_GPLP_media_result'  # 特殊化为自己的表名，比如'wst_huxiu_media_result' ,开头前缀为自己的名字开头字母，debug
         self.flag = flag
 
         self.new_logger = logger
@@ -72,10 +72,10 @@ class LcgTestSpider(CrawlSpider):
         elif self.flag == "detail":
             crawl_detail_flag = True
 
-        parser = ShenMeZhiDeMaiParser()  # 设置为自己的 parser 文件中的类，需要头部 import 自己的parser文件 debug
+        parser = GPLPParser()  # 设置为自己的 parser 文件中的类，需要头部 import 自己的parser文件 debug
         # 抓取列表页
         if feed_url_flag:
-            keywords = "CZZ-SMZDM%"  # 过滤出自己数据源的条件 debug
+            keywords = "CZZ-GPLP%"  # 过滤出自己数据源的条件 debug
             # condition = "data_source_name like '虎嗅-%'"  # 如果不需要设置为 "1"即可 debug
             condition = "1"
             results = self.__read_mysql(keywords, condition, **MYSQL_DBKWARGS)
@@ -148,4 +148,3 @@ class LcgTestSpider(CrawlSpider):
     def parse(self, response):
         print(response.url)
         pass
-

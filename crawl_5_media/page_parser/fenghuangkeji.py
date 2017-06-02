@@ -69,8 +69,8 @@ class FengHuangParser(Parser):
                     small_img['img_src'], self.mongo_client, self.redis_client, self.redis_key, publish_time if publish_time else self.now_date)
                 if not check_flag:
                     small_img_location.append({'img_src': small_img['img_src'], 'img_path': None, 'img_index': 1, 'img_desc': None, 'img_width': None, 'img_height': None})
-                    item['small_img_location']=small_img_location[0]
-                    item['small_img_location_count'] = len(small_img_location[0])
+                    item['small_img_location']=small_img_location
+                    item['small_img_location_count'] = len(small_img_location)
                 else:
                     small_img['img_path'] = img_file_info['img_file_name']
                     small_img['img_index'] = 1
@@ -78,8 +78,8 @@ class FengHuangParser(Parser):
                     small_img['img_width'] = img_file_info['img_width']
                     small_img['img_height'] = img_file_info['img_height']
                     small_img_location.append(small_img)
-                    item['small_img_location'] = small_img_location[0]
-                    item['small_img_location_count'] = len(small_img_location[0])
+                    item['small_img_location'] = small_img_location
+                    item['small_img_location_count'] = len(small_img_location)
             else:
                 item['small_img_location']=None
                 item['small_img_location_count'] = 0
@@ -213,7 +213,7 @@ class FengHuangParser(Parser):
                 num = response.xpath(
                     "//ul[@class='face_box']/li/span/text()").extract()
                 try:
-                    sent_kafka_message['like_count'] = num[0] if num else 0
+                    sent_kafka_message['like_count'] = num[0].strip() if num else 0
                     # print("****" * 30)
                     # print(sent_kafka_message['like_count'])
                 except Exception as e:
@@ -224,7 +224,7 @@ class FengHuangParser(Parser):
                 #     "//div[@class='mod-commentTextareaTitle js_head']//span[@class='w-com']//span[@class='w-num']/text()").extract()
                 comment_count_list = response.xpath(
                     "//h5[@class='cmt js_commentCount']//a//em/text()").extract()
-                sent_kafka_message['comment_count'] = comment_count_list[0] if comment_count_list else None
+                sent_kafka_message['comment_count'] = comment_count_list[0].strip() if comment_count_list else None
                 # print("3333" * 30)
                 # print(sent_kafka_message['comment_count'])
                 # 按照规定格式解析出的文章正文 <p>一段落</p>
